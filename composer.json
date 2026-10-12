@@ -1,0 +1,51 @@
+{
+    "name": "safegrd/laravel",
+    "description": "Back up a Laravel app with SafeGrd: the database, .env and storage/app in one encrypted backup, locked against deletion and test-restored on a schedule.",
+    "keywords": ["laravel", "backup", "database-backup", "mysql", "postgresql", "sqlite", "encryption", "disaster-recovery", "restore", "safegrd"],
+    "homepage": "https://safegrd.dev/docs/surfaces/laravel",
+    "license": "MIT",
+    "authors": [
+        {"name": "SafeGrd", "homepage": "https://safegrd.dev"}
+    ],
+    "support": {
+        "issues": "https://github.com/safegrd/laravel-package/issues",
+        "source": "https://github.com/safegrd/laravel-package",
+        "docs": "https://safegrd.dev/docs/surfaces/laravel"
+    },
+    "require": {
+        "php": "^8.1",
+        "illuminate/console": "^10.0|^11.0|^12.0",
+        "illuminate/http": "^10.0|^11.0|^12.0",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "symfony/process": "^6.2|^7.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "phpunit/phpunit": "^10.5|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "SafeGrd\\Laravel\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SafeGrd\\Laravel\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SafeGrd\\Laravel\\SafeGrdServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
