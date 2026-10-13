@@ -2,41 +2,14 @@
 
 namespace SafeGrd\Laravel\Tests;
 
+use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
-use Orchestra\Testbench\TestCase;
+use Illuminate\Contracts\Console\Kernel;
 use SafeGrd\Laravel\Cli;
-use SafeGrd\Laravel\SafeGrdServiceProvider;
 
 final class ServiceProviderTest extends TestCase
 {
-    private string $home;
-
-    protected function getPackageProviders($app): array
-    {
-        return [SafeGrdServiceProvider::class];
-    }
-
-    protected function setUp(): void
-    {
-        $this->home = sys_get_temp_dir().'/safegrd-test-'.bin2hex(random_bytes(4));
-        parent::setUp();
-    }
-
-    protected function defineEnvironment($app): void
-    {
-        $app['config']->set('safegrd.home', $this->home);
-        $app['config']->set('app.name', 'Acme Shop');
-    }
-
-    protected function tearDown(): void
-    {
-        @unlink($this->home.'/.safegrd/config.yaml');
-        @rmdir($this->home.'/.safegrd');
-        @unlink($this->home.'/.gitignore');
-        @rmdir($this->home);
-        parent::tearDown();
-    }
-
+    /** @return list<Event> */
     private function scheduled(): array
     {
         return array_values(array_filter(
@@ -45,41 +18,67 @@ final class ServiceProviderTest extends TestCase
         ));
     }
 
-    public function testTheCommandsAreRegistered(): void
+    public function test_the_commands_are_registered(): void
     {
-        $names = array_keys($this->app->make(\Illuminate\Contracts\Console\Kernel::class)->all());
-        foreach (['safegrd:install', 'safegrd:run', 'safegrd:backup', 'safegrd:status', 'safegrd:cli'] as $c) {
+        $names = array_keys($this->app->make(Kernel::class)->all());
+        foreach (['safegrd:install', 'safegrd:run', 'safegrd:backup', 'safegrd:status', 'safegrd:list', 'safegrd:doctor', 'safegrd:upgrade', 'safegrd:cli'] as $c) {
             $this->assertContains($c, $names);
         }
     }
 
-    public function testNothingIsScheduledBeforeInstall(): void
+    public function test_nothing_is_scheduled_before_install(): void
     {
         $this->assertSame([], $this->scheduled());
     }
 
-    public function testSafegrdRunIsScheduledEveryFiveMinutesOnceInstalled(): void
+    public function test_safegrd_run_is_scheduled_every_five_minutes_once_installed_even_in_maintenance_mode(): void
     {
-        mkdir($this->home.'/.safegrd', 0700, true);
-        file_put_contents($this->home.'/.safegrd/config.yaml', "surfaces:\n  - id: acme-shop\n    type: laravel\n");
+        $this->installed();
         $this->refreshApplication();
         $events = $this->scheduled();
         $this->assertCount(1, $events);
         $this->assertSame('*/5 * * * *', $events[0]->expression);
+        $this->assertTrue($events[0]->runsInMaintenanceMode());
+        $this->assertTrue($events[0]->withoutOverlapping);
+        $this->assertSame(storage_path('logs/safegrd.log'), $events[0]->output);
     }
 
-    public function testTheScheduleCanBeTurnedOff(): void
+    public function test_another_apps_surface_in_a_shared_home_does_not_schedule_this_one(): void
     {
-        mkdir($this->home.'/.safegrd', 0700, true);
-        file_put_contents($this->home.'/.safegrd/config.yaml', "surfaces:\n  - id: acme-shop\n    type: laravel\n");
+        $this->installed('other-app', '/srv/other-app');
+        $this->refreshApplication();
+        $this->assertSame([], $this->scheduled());
+    }
+
+    public function test_the_schedule_can_be_turned_off(): void
+    {
+        $this->installed();
         $this->app['config']->set('safegrd.schedule', false);
         $this->assertSame([], $this->scheduled());
     }
 
-    public function testTheSurfaceIsTheAppNameAsASlug(): void
+    public function test_the_surface_is_the_app_name_as_a_slug_before_install(): void
     {
-        $this->assertSame('acme-shop', Cli::fromConfig()->surface());
+        $this->assertSame('acme-shop', $this->app->make(Cli::class)->surface());
         $this->app['config']->set('safegrd.surface', 'shop-eu');
-        $this->assertSame('shop-eu', Cli::fromConfig()->surface());
+        $this->assertSame('shop-eu', $this->app->make(Cli::class)->surface());
+    }
+
+    public function test_a_safegrd_surface_set_after_install_keeps_the_app_set_up(): void
+    {
+        $this->installed('acme-shop');
+        $this->app['config']->set('safegrd.surface', 'renamed');
+        $cli = $this->app->make(Cli::class);
+        $this->assertTrue($cli->installed());
+        $this->assertSame('acme-shop', $cli->surface());
+        $this->refreshApplication();
+        $this->app['config']->set('safegrd.surface', 'renamed');
+        $this->assertCount(1, $this->scheduled());
+    }
+
+    public function test_the_surface_is_the_configs_after_install(): void
+    {
+        $this->installed('shop-2');
+        $this->assertSame('shop-2', $this->app->make(Cli::class)->surface());
     }
 }

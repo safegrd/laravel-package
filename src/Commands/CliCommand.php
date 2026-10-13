@@ -4,6 +4,7 @@ namespace SafeGrd\Laravel\Commands;
 
 use Illuminate\Console\Command;
 use SafeGrd\Laravel\Cli;
+use SafeGrd\Laravel\SafeGrdException;
 
 final class CliCommand extends Command
 {
@@ -13,8 +14,18 @@ final class CliCommand extends Command
 
     protected $description = 'Run the SafeGrd CLI with this app\'s setup, for example: php artisan safegrd:cli -- list';
 
-    public function handle(): int
+    public function handle(Cli $cli): int
     {
-        return $this->cli(Cli::fromConfig(), array_values((array) $this->argument('cli_args')));
+        // A connection the CLI cannot use stops a backup, but not a list or
+        // a restore into another database.
+        $database = true;
+        try {
+            $cli->databaseUrl();
+        } catch (SafeGrdException $e) {
+            $this->stderr('Warning: '.$e->getMessage().' The CLI runs without the app\'s connection.');
+            $database = false;
+        }
+
+        return $this->cli($cli, array_values(array_map('strval', (array) $this->argument('cli_args'))), $database);
     }
 }

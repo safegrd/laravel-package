@@ -22,12 +22,19 @@ final class DatabaseUrlTest extends TestCase
             'sqlite relative' => [['driver' => 'sqlite', 'database' => 'database/database.sqlite'], 'sqlite:///srv/app/database/database.sqlite'],
             'url pgsql' => [['driver' => 'pgsql', 'url' => 'pgsql://app:x@db:5432/shop'], 'postgres://app:x@db:5432/shop'],
             'url mysql' => [['driver' => 'mysql', 'url' => 'mysql://app:x@db/shop'], 'mysql://app:x@db/shop'],
+            'mysql with a CA' => [['driver' => 'mysql', 'host' => 'db.example', 'database' => 'shop', 'username' => 'app', 'password' => 'x', 'options' => [1009 => '/etc/ssl/do-ca.crt']], 'mysql://app:x@db.example:3306/shop?ssl-ca=%2Fetc%2Fssl%2Fdo-ca.crt'],
+            'mysql with a CA, unverified' => [['driver' => 'mysql', 'host' => 'db', 'database' => 'shop', 'username' => 'app', 'password' => 'x', 'options' => [1009 => '/ca.pem', 1014 => false]], 'mysql://app:x@db:3306/shop?ssl-ca=%2Fca.pem&tls=skip-verify'],
+            'mysql with an empty CA, as Laravel\'s default config leaves it' => [['driver' => 'mysql', 'host' => '127.0.0.1', 'database' => 'shop', 'username' => 'app', 'password' => 'x', 'options' => []], 'mysql://app:x@127.0.0.1:3306/shop'],
+            'pgsql with certificates' => [['driver' => 'pgsql', 'host' => 'db', 'database' => 'shop', 'username' => 'app', 'password' => 'x', 'sslmode' => 'verify-full', 'sslrootcert' => '/root.crt', 'sslcert' => '/c.crt', 'sslkey' => '/c.key'], 'postgres://app:x@db:5432/shop?sslmode=verify-full&sslrootcert=%2Froot.crt&sslcert=%2Fc.crt&sslkey=%2Fc.key'],
+            'url pgsql takes the connection\'s sslmode' => [['driver' => 'pgsql', 'url' => 'postgres://app:x@db:5432/shop', 'sslmode' => 'require'], 'postgres://app:x@db:5432/shop?sslmode=require'],
+            'url pgsql keeps its own sslmode' => [['driver' => 'pgsql', 'url' => 'postgres://app:x@db:5432/shop?sslmode=verify-full', 'sslmode' => 'prefer'], 'postgres://app:x@db:5432/shop?sslmode=verify-full'],
+            'url mysql takes the CA' => [['driver' => 'mysql', 'url' => 'mysql://app:x@db/shop', 'options' => [1009 => '/ca.pem']], 'mysql://app:x@db/shop?ssl-ca=%2Fca.pem'],
         ];
     }
 
     /** @param  array<string, mixed>  $c */
     #[DataProvider('connections')]
-    public function testBuildsTheUrlTheCliConnectsWith(array $c, string $want): void
+    public function test_builds_the_url_the_cli_connects_with(array $c, string $want): void
     {
         $this->assertSame($want, DatabaseUrl::fromConfig($c, 'default', '/srv/app'));
     }
@@ -46,14 +53,14 @@ final class DatabaseUrlTest extends TestCase
 
     /** @param  array<string, mixed>  $c */
     #[DataProvider('refusals')]
-    public function testRefusesWhatTheCliCannotBackUp(array $c, string $says): void
+    public function test_refuses_what_the_cli_cannot_back_up(array $c, string $says): void
     {
         $this->expectException(SafeGrdException::class);
         $this->expectExceptionMessageMatches('/'.preg_quote($says, '/').'/');
         DatabaseUrl::fromConfig($c, 'default', '/srv/app');
     }
 
-    public function testTheMigrationsTableIsAStringBeforeLaravel11AndAnArrayAfter(): void
+    public function test_the_migrations_table_is_a_string_before_laravel11_and_an_array_after(): void
     {
         $this->assertNull(DatabaseUrl::migrationsTable('migrations'));
         $this->assertNull(DatabaseUrl::migrationsTable(['table' => 'migrations', 'update_date_on_publish' => true]));

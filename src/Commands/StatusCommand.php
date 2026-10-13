@@ -13,11 +13,10 @@ final class StatusCommand extends Command
 
     protected $description = 'Show the last backup, the next one due and the last drill';
 
-    public function handle(): int
+    public function handle(Cli $cli): int
     {
-        $cli = Cli::fromConfig();
         if (! $cli->installed()) {
-            $this->error('Error: the app is not set up for SafeGrd yet. Run php artisan safegrd:install.');
+            $this->stderr('Error: the app is not set up for SafeGrd yet. Run php artisan safegrd:install.');
 
             return self::FAILURE;
         }

@@ -15,10 +15,13 @@ final class DatabaseUrl
      */
     public static function fromConfig(array $c, string $name, string $basePath): string
     {
-        if (! empty($c['url'])) {
-            return self::normalise((string) $c['url'], $name);
-        }
         $driver = (string) ($c['driver'] ?? '');
+        if (! empty($c['url'])) {
+            $url = self::normalise((string) $c['url'], $name);
+            $scheme = (string) parse_url($url, PHP_URL_SCHEME);
+
+            return self::withQuery($url, self::tls($c, $scheme === 'postgres' ? 'pgsql' : $scheme));
+        }
         switch ($driver) {
             case 'sqlite':
                 $db = (string) ($c['database'] ?? '');
@@ -50,15 +53,82 @@ final class DatabaseUrl
                 $auth = rawurlencode($user).($pass !== '' ? ':'.rawurlencode($pass) : '');
                 $scheme = $driver === 'pgsql' ? 'postgres' : $driver;
                 $url = $scheme.'://'.($auth !== '' ? $auth.'@' : '').$host.':'.$port.'/'.rawurlencode($db);
-                if ($driver === 'pgsql' && ! empty($c['sslmode'])) {
-                    $url .= '?sslmode='.rawurlencode((string) $c['sslmode']);
-                }
 
-                return $url;
+                return self::withQuery($url, self::tls($c, $driver));
             case 'sqlsrv':
                 throw new SafeGrdException("Connection {$name} is SQL Server, which SafeGrd does not back up yet.");
         }
         throw new SafeGrdException("Connection {$name} uses the driver '{$driver}'. SafeGrd backs up mysql, mariadb, pgsql and sqlite.");
+    }
+
+    /**
+     * The TLS settings of a connection, as the CLI's URL takes them. For
+     * MySQL and MariaDB they are PDO options: Laravel's own config sets
+     * MYSQL_ATTR_SSL_CA from the variable of that name, which managed
+     * databases need. For PostgreSQL they are the connection's sslmode,
+     * sslrootcert, sslcert and sslkey, which libpq's URL takes as they are.
+     * Nothing set adds nothing: a database on 127.0.0.1 has no TLS.
+     *
+     * @param  array<string, mixed>  $c
+     * @return array<string, string>
+     */
+    private static function tls(array $c, string $driver): array
+    {
+        $q = [];
+        if ($driver === 'pgsql') {
+            foreach (['sslmode', 'sslrootcert', 'sslcert', 'sslkey'] as $k) {
+                if (! empty($c[$k]) && is_scalar($c[$k])) {
+                    $q[$k] = (string) $c[$k];
+                }
+            }
+
+            return $q;
+        }
+        if ($driver !== 'mysql' && $driver !== 'mariadb') {
+            return $q;
+        }
+        $options = is_array($c['options'] ?? null) ? $c['options'] : [];
+        $ca = $options[self::mysqlAttr('SSL_CA', 1009)] ?? null;
+        if (is_string($ca) && $ca !== '') {
+            $q['ssl-ca'] = $ca;
+            // PDO checks the certificate unless told not to, and so does the
+            // CLI with ssl-ca. Told not to, both still encrypt.
+            if (($options[self::mysqlAttr('SSL_VERIFY_SERVER_CERT', 1014)] ?? true) === false) {
+                $q['tls'] = 'skip-verify';
+            }
+        }
+
+        return $q;
+    }
+
+    /** A PDO MySQL attribute's number, by its name in PHP 8.4's Pdo\Mysql or before. */
+    private static function mysqlAttr(string $name, int $fallback): int
+    {
+        foreach (['Pdo\Mysql::ATTR_'.$name, 'PDO::MYSQL_ATTR_'.$name] as $const) {
+            if (defined($const)) {
+                return (int) constant($const);
+            }
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * $url with $add in its query string. A key the URL sets already keeps
+     * the URL's value, as Laravel lets the URL win.
+     *
+     * @param  array<string, string>  $add
+     */
+    private static function withQuery(string $url, array $add): string
+    {
+        $have = [];
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $have);
+        $add = array_diff_key($add, $have);
+        if ($add === []) {
+            return $url;
+        }
+
+        return $url.(str_contains($url, '?') ? '&' : '?').http_build_query($add, '', '&', PHP_QUERY_RFC3986);
     }
 
     /**

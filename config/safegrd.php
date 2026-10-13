@@ -30,4 +30,14 @@ return [
     // The SafeGrd server.
     'server' => env('SAFEGRD_SERVER_URL', 'https://safegrd.dev'),
 
+    // Seconds a run of the CLI may take before it is stopped. Unset, there
+    // is no limit: a large first backup can take hours.
+    'timeout' => env('SAFEGRD_TIMEOUT'),
+
+    // The log channel a failed backup or run is written to, as an error, so
+    // the error tracker the app reports to (Sentry, Flare, Bugsnag) sees it.
+    // Unset, it is the app's default channel. The CLI's own output goes to
+    // storage/logs/safegrd.log either way.
+    'log_channel' => env('SAFEGRD_LOG_CHANNEL'),
+
 ];

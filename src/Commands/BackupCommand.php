@@ -13,15 +13,18 @@ final class BackupCommand extends Command
 
     protected $description = 'Back up the app now: its database, .env and storage/app';
 
-    public function handle(): int
+    public function handle(Cli $cli): int
     {
-        $cli = Cli::fromConfig();
         if (! $cli->installed()) {
-            $this->error('Error: the app is not set up for SafeGrd yet. Run php artisan safegrd:install.');
+            $this->stderr('Error: the app is not set up for SafeGrd yet. Run php artisan safegrd:install.');
 
             return self::FAILURE;
         }
+        $code = $this->cli($cli, ['backup', '--surface', $cli->surface()]);
+        if ($code !== self::SUCCESS) {
+            $this->reportFailure($cli, $code);
+        }
 
-        return $this->cli($cli, ['backup', '--surface', $cli->surface()]);
+        return $code;
     }
 }
