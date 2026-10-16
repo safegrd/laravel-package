@@ -56,10 +56,16 @@ final class SafeGrdServiceProvider extends ServiceProvider
         }
     }
 
-    /** @return array<string, string> */
+    /**
+     * The current container's Cli, not $this->app's: in Laravel 10.28 and older,
+     * AboutCommand keeps every closure added in the process, so a test suite
+     * calls this on providers whose app is gone.
+     *
+     * @return array<string, string>
+     */
     private function about(): array
     {
-        $cli = $this->app->make(Cli::class);
+        $cli = app(Cli::class);
         try {
             $bin = $cli->binary() ?? '<fg=yellow>not installed</>';
         } catch (Throwable $e) {
