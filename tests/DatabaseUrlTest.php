@@ -21,6 +21,8 @@ final class DatabaseUrlTest extends TestCase
             'mysql' => [['driver' => 'mysql', 'host' => '127.0.0.1', 'port' => '3306', 'database' => 'shop', 'username' => 'app', 'password' => 'p@ss:w/rd'], 'mysql://app:p%40ss%3Aw%2Frd@127.0.0.1:3306/shop'],
             'mariadb' => [['driver' => 'mariadb', 'host' => 'db', 'database' => 'shop', 'username' => 'app', 'password' => ''], 'mariadb://app@db:3306/shop'],
             'pgsql with sslmode' => [['driver' => 'pgsql', 'host' => 'db', 'port' => 5433, 'database' => 'shop', 'username' => 'app', 'password' => 'x', 'sslmode' => 'require'], 'postgres://app:x@db:5433/shop?sslmode=require'],
+            'read/write split with write credentials' => [['driver' => 'pgsql', 'read' => ['host' => 'replica'], 'write' => ['host' => 'primary', 'port' => 6432, 'username' => 'writer', 'password' => 'w'], 'database' => 'shop', 'username' => 'reader', 'password' => 'r'], 'postgres://writer:w@primary:6432/shop'],
+            'read/write split, several write sections' => [['driver' => 'mysql', 'write' => [['host' => 'primary-a'], ['host' => 'primary-b']], 'database' => 'shop', 'username' => 'app', 'password' => 'x'], 'mysql://app:x@primary-a:3306/shop'],
             'read/write split' => [['driver' => 'mysql', 'read' => ['host' => ['replica']], 'write' => ['host' => ['primary']], 'database' => 'shop', 'username' => 'app', 'password' => 'x'], 'mysql://app:x@primary:3306/shop'],
             'ipv6' => [['driver' => 'pgsql', 'host' => '::1', 'database' => 'shop', 'username' => 'app', 'password' => 'x'], 'postgres://app:x@[::1]:5432/shop'],
             'sqlite absolute' => [['driver' => 'sqlite', 'database' => '/srv/app/database/database.sqlite'], 'sqlite:///srv/app/database/database.sqlite'],

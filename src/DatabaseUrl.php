@@ -15,6 +15,7 @@ final class DatabaseUrl
      */
     public static function fromConfig(array $c, string $name, string $basePath): string
     {
+        $c = self::writeConfig($c);
         $driver = (string) ($c['driver'] ?? '');
         if (! empty($c['url'])) {
             $url = self::normalise((string) $c['url'], $name);
@@ -145,11 +146,33 @@ final class DatabaseUrl
         return $table;
     }
 
+    /**
+     * A read/write split as Laravel connects for writes: the write section
+     * over the connection's own settings, so a write user, password or port
+     * of its own is the one used. The write host has every row.
+     *
+     * @param  array<string, mixed>  $c
+     * @return array<string, mixed>
+     */
+    private static function writeConfig(array $c): array
+    {
+        $write = $c['write'] ?? null;
+        unset($c['read'], $c['write']);
+        if (! is_array($write)) {
+            return $c;
+        }
+        // Several write sections are a list Laravel picks one of at random.
+        if (isset($write[0]) && is_array($write[0])) {
+            $write = $write[0];
+        }
+
+        return array_merge($c, $write);
+    }
+
     /** @param  array<string, mixed>  $c */
     private static function host(array $c): string
     {
-        // A read/write split backs up from the write host, which has every row.
-        $host = $c['write']['host'] ?? $c['host'] ?? '';
+        $host = $c['host'] ?? '';
         if (is_array($host)) {
             $host = $host[0] ?? '';
         }
