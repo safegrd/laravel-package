@@ -98,7 +98,7 @@ abstract class TestCase extends Testbench
 dir=$(dirname "$0")
 mode=$(cat "$dir/mode" 2>/dev/null || echo ok)
 echo "$*" >> "$dir/calls.log"
-echo "env db=${SAFEGRD_LARAVEL_DATABASE_URL:-} token=${SAFEGRD_INSTALL_TOKEN:-} home=$HOME" >> "$dir/calls.log"
+echo "env db=${SAFEGRD_LARAVEL_DATABASE_URL:-} token=${SAFEGRD_INSTALL_TOKEN:-} scheduled_by=${SAFEGRD_SCHEDULED_BY:-} home=$HOME" >> "$dir/calls.log"
 cfg="$HOME/.safegrd/config.yaml"
 [ "$1" = "--server-url" ] && shift 2
 case "$1" in

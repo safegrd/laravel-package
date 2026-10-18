@@ -23,6 +23,8 @@ final class CommandsTest extends TestCase
         $this->assertStringContainsString('token=sg_pat_secret', $calls);
         $this->assertStringNotContainsString('sg_pat_secret ', str_replace('token=sg_pat_secret', '', $calls), 'the token is on no command line');
         $this->assertStringContainsString('init --laravel '.base_path().' --surface-id acme-shop --database-url env:SAFEGRD_LARAVEL_DATABASE_URL', $calls);
+        // The CLI is told the package runs the schedule, so it does not print one of its own.
+        $this->assertMatchesRegularExpression('/init --laravel [^\n]*\nenv [^\n]*scheduled_by=laravel-package /', $calls);
         $this->assertStringContainsString('daemon run --once --interval 5m', $calls);
         $this->assertStringContainsString('db=sqlite://'.$this->dir.'/app.sqlite', $calls);
         $this->assertStringContainsString('every five minutes', $out);

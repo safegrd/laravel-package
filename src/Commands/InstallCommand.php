@@ -90,7 +90,9 @@ final class InstallCommand extends Command
         if ($table = DatabaseUrl::migrationsTable(config('database.migrations'))) {
             $init = array_merge($init, ['--migrations-table', $table]);
         }
-        if ($this->cli($cli, $init, true, [Cli::DATABASE_ENV => $url]) !== self::SUCCESS) {
+        // The package runs the schedule, so the CLI leaves out the schedule it
+        // would otherwise tell the user to set up.
+        if ($this->cli($cli, $init, true, [Cli::DATABASE_ENV => $url, 'SAFEGRD_SCHEDULED_BY' => 'laravel-package']) !== self::SUCCESS) {
             return self::FAILURE;
         }
         if (! $cli->installed()) {

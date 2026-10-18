@@ -104,6 +104,20 @@ needs its cron entry on the host:
 
 Forge and Ploi each have a setting that adds it.
 
+`safegrd:run` runs in the background, so a long backup does not hold up the app's other scheduled
+tasks. Cron leaves it running when `schedule:run` returns. A systemd timer does not, by default:
+when its service ends, systemd stops the backup with it, and the next runs are skipped until the
+run's 3-hour lock expires. Give that service `KillMode=process`:
+
+```ini
+[Service]
+Type=oneshot
+User=forge
+WorkingDirectory=/path/to/app
+ExecStart=/usr/bin/php artisan schedule:run
+KillMode=process
+```
+
 ## When a backup fails
 
 `safegrd:backup` and `safegrd:run` exit with the CLI's code: 10 when the database or the files could
@@ -132,6 +146,8 @@ The SafeGrd console alerts on the same failure, and on a backup that stops arriv
 - `storage` is on a filesystem mounted `noexec`, so the downloaded CLI cannot run. Install
   `safegrd` elsewhere and set `SAFEGRD_BINARY`.
 - No cron entry for `schedule:run`. The console says the backup is overdue.
+- `schedule:run` started by a systemd timer without `KillMode=process`: `storage/logs/safegrd.log`
+  stays empty and the console says the host stopped checking in. See the scheduler above.
 
 ## Configuration
 
