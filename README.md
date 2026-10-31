@@ -42,9 +42,9 @@ A drill decrypts the latest backup and reads it in memory. It passes when:
 - the `.env` holds an `APP_KEY` of the length Laravel's cipher takes;
 - the migrations table has a row for each migration that had run.
 
-The console shows each drill, and alerts you when a drill fails or a backup is overdue: by
-webhook on every plan, by email on paid plans. The overdue alert is how you hear about a
-scheduler that stopped running.
+The console shows each drill, and alerts you when a drill fails or a backup is overdue: to
+Slack, Microsoft Teams, Discord, PagerDuty or a webhook URL on every plan, by email on paid
+plans. The overdue alert is how you hear about a scheduler that stopped running.
 
 ## Where the connection comes from
 
